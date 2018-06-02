@@ -1,0 +1,66 @@
+---
+title: "Impact of Dosage and Delivery Method of Vitamin C on Guinea Pig Tooth Growth"
+author: "Connie Wang"
+date: "June 1, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+## Overview
+
+This report analyzes the ToothGrowth dataset in R, which tracks the response of odontoblast (tooth cell) length to vitamin C treatment in 60 guinea pigs. Based on an exploration of the data, we chose to use ____ to test the efficacy of 3 doses and 2 delivery methods. We found that [].
+
+## Summary of Data and Analysis Plan
+
+ToothGrowth contains 60 observations of 3 variables: len (tooth length, in microns), supp (supplement type: VC = Vitamin C or OC = Orange Juice), and dose (0.5, 1, or 2 mg/day). 
+First, we view the shape of the data. Although the small sample sizes make it difficult to ascertain that the data is normally distributed, we can see below that there is at least no obvious skewness. Therefore, we will make the **assumption of normality** for simplicity, and test whether delivery method has an impact on tooth growth using a Student's T test. We can use 3 paired t-tests to look at the effect of dosage: comparing 0.5 and 1, 1 and 2, and 0.5 and 2. Since we are making multiple comparisons here, we will employ the Bonferroni correction as an adjustment (noting here that since our comparisons are not independent, the Bonferroni correction will be a conservative estimate).
+
+```{r summary}
+data <- as_tibble(ToothGrowth) 
+
+# Distributions of tooth length by delivery method
+ggplot(data, aes(len)) + 
+  geom_histogram(binwidth=3) + 
+  facet_grid(.~supp)
+
+# Distributions of tooth length by dosage
+ggplot(data, aes(len)) + 
+  geom_histogram(binwidth=3) + 
+  facet_grid(.~dose)
+```
+
+## Effect of Delivery Method
+
+```{r delivery}
+t.test(data$len~data$supp)
+```
+Our p-value is 0.06 -- this implies that the probability that we would observe these results or more extreme in the case that the two delivery methods are equivalent is 6%. While this is rather low, it remains insignificant at the standard p<0.05 level. Therefore, we will conclude that there is no difference between the two delivery methods.
+
+## Effect of Vitamin C Dosage
+
+```{r dosage}
+# Get subsets of data containing only 2 dosages each
+data1 <- data %>% filter(dose == 0.5 | dose == 1.0)
+data2 <- data %>% filter(dose == 0.5 | dose == 2.0)
+data3 <- data %>% filter(dose == 1.0 | dose == 2.0)
+
+# Test each comparison
+p1 <- t.test(data1$len~data1$dose)$p.value
+p2 <- t.test(data2$len~data2$dose)$p.value
+p3 <- t.test(data3$len~data3$dose)$p.value
+
+# Apply Bonferroni correction
+p1 <- p.adjust(p1, method="bonferroni", n=3)
+p2 <- p.adjust(p2, method="bonferroni", n=3)
+p3 <- p.adjust(p3, method="bonferroni", n=3)
+
+print(paste("0.5 vs. 1.0: ", p1))
+print(paste("0.5 vs. 2.0: ", p2))
+print(paste("1.0 vs. 2.0: ", p3))
+```
+
+The three p-values shown above, which have been corrected via Bonferroni method, are all below 0.05, meaning that the chances of us observing these results or more extreme if there were in fact no effect of dosage on tooth growth are very small (less than 5%). In this case, we see that the probability of observing these results if delivering 0.5 mg/day were equivalent to delivering 1.0 mg/day is 3.8e-5%, 1.0 vs. 2.0 mg/day is 5.7e-3%, and 0.5 vs 2.0 mg/day is 1.3e-11%. Therefore, we can conclude that vitamin C dosage has an effect on guinea pig tooth growth.
